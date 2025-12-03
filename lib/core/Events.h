@@ -100,7 +100,7 @@ enum class EventType {
      * value: Last press duration in milliseconds
      * Usage: Managing user interaction timing
      */
-    ENCODER_BUTTON_RELEASED
+    ENCODER_BUTTON_RELEASED,
     
     // ========================================================================
     // DISPLAY CONTROL EVENTS
