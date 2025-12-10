@@ -299,9 +299,12 @@ namespace CloudMouse::Hardware
 
         // Interactive state tracking
         int lastEncoderValue = 0;            // Most recent encoder rotation value
+        int lastEncoderPushAndRotateValue = 0;
         unsigned long lastClickTime = 0;     // Timestamp of last button click
         unsigned long lastLongPressTime = 0; // Timestamp of last long press
-
+        unsigned long lastDoubleClickTime = 0;
+        unsigned long lastPushAndRotateTime = 0;
+        
         // Animation timing control
         unsigned long lastWiFiConnectingRender = 0;                       // Last WiFi animation frame time
         static const unsigned long WIFI_CONNECTING_RENDER_INTERVAL = 100; // 100ms = 10fps animation

@@ -142,42 +142,48 @@ namespace CloudMouse::Hardware
         handleDimmer();
     }
 
-    void DisplayManager::handleDimmer() {
-      const unsigned long IDLE_TIMEOUT_MS = 10000; // 10 secondi di inattività
+    void DisplayManager::handleDimmer()
+    {
+        const unsigned long IDLE_TIMEOUT_MS = 10000; // 10 secondi di inattività
 
-      // Verifica la modalità IDLE
-      if (millis() - lastInteractionTime > IDLE_TIMEOUT_MS) {
-          
-        // Verifica se è il momento di eseguire il prossimo passo di fade
-        if (millis() - lastFadeTime > FADE_OUT_STEP_DELAY_MS) {
-            
-          // int currentBrightness = display.getBrightness(); // Assumendo che esista questa funzione o una variabile
-          
-          // Controlla se abbiamo raggiunto il target IDLE
-          if (currentBrightness > BRIGHTNESS_IDLE_TARGET) {
-              
-            // 1. Calcola la nuova luminosità
-            currentBrightness = currentBrightness - FADE_OUT_STEP_VALUE;
-            
-            // 2. Assicurati che non scenda sotto il target
-            if (currentBrightness < BRIGHTNESS_IDLE_TARGET) {
-                currentBrightness = BRIGHTNESS_IDLE_TARGET;
+        // Verifica la modalità IDLE
+        if (millis() - lastInteractionTime > IDLE_TIMEOUT_MS)
+        {
+
+            // Verifica se è il momento di eseguire il prossimo passo di fade
+            if (millis() - lastFadeTime > FADE_OUT_STEP_DELAY_MS)
+            {
+
+                // int currentBrightness = display.getBrightness(); // Assumendo che esista questa funzione o una variabile
+
+                // Controlla se abbiamo raggiunto il target IDLE
+                if (currentBrightness > BRIGHTNESS_IDLE_TARGET)
+                {
+
+                    // 1. Calcola la nuova luminosità
+                    currentBrightness = currentBrightness - FADE_OUT_STEP_VALUE;
+
+                    // 2. Assicurati che non scenda sotto il target
+                    if (currentBrightness < BRIGHTNESS_IDLE_TARGET)
+                    {
+                        currentBrightness = BRIGHTNESS_IDLE_TARGET;
+                    }
+
+                    // 3. Applica il nuovo valore
+                    display.setBrightness(currentBrightness);
+
+                    // 4. Aggiorna il timer
+                    lastFadeTime = millis();
+                }
             }
-            
-            // 3. Applica il nuovo valore
-            display.setBrightness(currentBrightness);
-            
-            // 4. Aggiorna il timer
-            lastFadeTime = millis();
-          }
         }
-      }
     }
 
-    void DisplayManager::wakeUp() {
-      lastInteractionTime = millis();
-      currentBrightness = BRIGHTNESS_UP_TARGET;
-      display.setBrightness(BRIGHTNESS_UP_TARGET);
+    void DisplayManager::wakeUp()
+    {
+        lastInteractionTime = millis();
+        currentBrightness = BRIGHTNESS_UP_TARGET;
+        display.setBrightness(BRIGHTNESS_UP_TARGET);
     }
 
     // ============================================================================
@@ -188,7 +194,8 @@ namespace CloudMouse::Hardware
     {
         // First priority: forward event to app callback if registered
         // This allows a custom DisplayManager to intercept and handle events
-        if (appCallback) {
+        if (appCallback)
+        {
             appCallback(event);
         }
 
@@ -214,6 +221,8 @@ namespace CloudMouse::Hardware
             break;
 
         case EventType::ENCODER_ROTATION:
+        {
+
             wakeUp();
             // Encoder interaction - update interactive feedback
             SDK_LOGGER("🔄 Display received encoder rotation: %d\n", event.value);
@@ -222,19 +231,56 @@ namespace CloudMouse::Hardware
             // Return to default screen and stop any animations
             currentScreen = Screen::HELLO_WORLD;
             needsRedraw = false;
-            lastWiFiConnectingRender = 0;
+
+            // reset last push and rotate value
+            if (lastEncoderPushAndRotateValue != 0)
+            {
+                if (millis() - lastPushAndRotateTime >= 2000)
+                {
+                    lastEncoderPushAndRotateValue = 0;
+                }
+                else
+                {
+                    lastEncoderValue = 0;
+                }
+            }
             renderHelloWorld();
             break;
+        }
 
         case EventType::ENCODER_CLICK:
             wakeUp();
             // Button click - record interaction and update display if on interactive screen
             SDK_LOGGER("🖱️ Display received encoder click");
             lastClickTime = millis();
+            lastEncoderPushAndRotateValue = 0;
             if (currentScreen == Screen::HELLO_WORLD)
             {
                 renderHelloWorld(); // Update to show click feedback
             }
+            break;
+
+        case EventType::ENCODER_DOUBLE_CLICK:
+            wakeUp();
+            // Long press - record interaction and update display if on interactive screen
+            SDK_LOGGER("🖱️🖱️ Display received encoder double click");
+            lastDoubleClickTime = millis();
+            lastEncoderPushAndRotateValue = 0;
+            if (currentScreen == Screen::HELLO_WORLD)
+            {
+                renderHelloWorld(); // Update to show long press feedback
+            }
+            break;
+
+        case EventType::ENCODER_PRESS_AND_ROTATE:
+            wakeUp();
+            // Long press - record interaction and update display if on interactive screen
+            SDK_LOGGER("🖱️ Display received encoder press and rotate");
+            lastEncoderPushAndRotateValue = event.value;
+            lastPushAndRotateTime = millis();
+            lastEncoderValue = 0;
+            needsRedraw = false;
+            renderHelloWorld(); // Update to show long press feedback
             break;
 
         case EventType::ENCODER_LONG_PRESS:
@@ -242,6 +288,7 @@ namespace CloudMouse::Hardware
             // Long press - record interaction and update display if on interactive screen
             SDK_LOGGER("⏱️ Display received encoder long press");
             lastLongPressTime = millis();
+            lastEncoderPushAndRotateValue=0;
             if (currentScreen == Screen::HELLO_WORLD)
             {
                 renderHelloWorld(); // Update to show long press feedback
@@ -316,6 +363,18 @@ namespace CloudMouse::Hardware
         else if (millis() - lastLongPressTime < 2000 && lastLongPressTime > 0)
         {
             drawCenteredText("Long Press!", 160, COLOR_WARNING);
+        }
+        else if (millis() - lastDoubleClickTime < 2000 && lastDoubleClickTime > 0)
+        {
+            drawCenteredText("Double Click!", 160, COLOR_WARNING);
+        }
+        else if (lastEncoderPushAndRotateValue > 0)
+        {
+            drawCenteredText("Push and rotate RIGHT!", 160, COLOR_WARNING);
+        }
+        else if (lastEncoderPushAndRotateValue < 0)
+        {
+            drawCenteredText("Push and rotate LEFT!", 160, COLOR_WARNING);
         }
         else if (lastEncoderValue > 0)
         {
